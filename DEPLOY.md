@@ -8,13 +8,13 @@ What it does
 
 - Runs on pushes to `main`.
 - Uses `pnpm` to install and build (`pnpm build`).
-- Publishes the `./dist` folder to the `gh-pages` branch using `peaceiris/actions-gh-pages`.
+- Uses official GitHub Pages actions to deploy the `./dist` folder directly to GitHub Pages (no separate gh-pages branch needed).
 
 How to use
 
 1. Push your changes to the `main` branch on GitHub.
-2. Wait for the `build-and-deploy` workflow to finish (Actions tab).
-3. Go to your repository Settings → Pages, and select the `gh-pages` branch (if not already configured). Your site should be available soon at:
+2. Wait for the `build-and-deploy` and `deploy` workflows to finish (Actions tab).
+3. GitHub Pages will be automatically enabled and your site should be available at:
    - `https://<your-user>.github.io/<your-repo>/` (or your custom domain if configured)
 
 Notes
