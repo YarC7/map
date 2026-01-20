@@ -16,14 +16,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js & pnpm
-        uses: pnpm/action-setup@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: "8"
 
       - name: Create .env from GitHub Secrets
         run: |
           echo "VITE_MAPBOX_TOKEN=${{ secrets.VITE_MAPBOX_TOKEN }}" > .env
+          echo "VITE_BASE=${{ secrets.VITE_BASE }}" >> .env
+          echo "VITE_APP_TITLE=${{ secrets.VITE_APP_TITLE }}" >> .env
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
