@@ -6,8 +6,13 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -15,6 +20,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,6 +39,13 @@ jobs:
           echo "VITE_MAPBOX_TOKEN=${{ secrets.VITE_MAPBOX_TOKEN }}" > .env
           echo "VITE_BASE=${{ secrets.VITE_BASE }}" >> .env
           echo "VITE_APP_TITLE=${{ secrets.VITE_APP_TITLE }}" >> .env
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.VITE_MAPBOX_TOKEN }}" ]; then
+            echo "ERROR: VITE_MAPBOX_TOKEN secret is not set. Add it in Settings → Secrets & variables → Actions."
+            exit 1
+          fi
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
@@ -40,7 +55,6 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: gh-pages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
