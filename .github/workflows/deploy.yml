@@ -32,7 +32,7 @@ jobs:
           echo "VITE_BASE=${{ secrets.VITE_BASE }}" >> .env
           echo "VITE_APP_TITLE=${{ secrets.VITE_APP_TITLE }}" >> .env
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build
         run: pnpm build
