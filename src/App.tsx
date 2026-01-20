@@ -851,6 +851,15 @@ export default function App() {
             <div style={{ color: "#aaa", fontSize: "11px" }}>
               Upload a GeoJSON FeatureCollection or array of Point features
             </div>
+            <div style={{ color: "#aaa", fontSize: "11px" }}>
+              <a
+                href="/template.json"
+                download="template.json"
+                style={{ color: "#ff9500", textDecoration: "underline" }}
+              >
+                Download template file
+              </a>
+            </div>
           </div>
           {userFeatures.length > 0 && (
             <div style={{ borderTop: "1px solid #444", paddingTop: "8px" }}>

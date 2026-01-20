@@ -1,0 +1,75 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    105.8342,
+                    21.0278
+                ]
+            },
+            "properties": {
+                "name": "Hanoi",
+                "weight": 3
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    106.6297,
+                    10.8231
+                ]
+            },
+            "properties": {
+                "name": "Ho Chi Minh City",
+                "weight": 4
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    108.2022,
+                    16.0544
+                ]
+            },
+            "properties": {
+                "name": "Da Nang",
+                "weight": 2
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    139.6917,
+                    35.6895
+                ]
+            },
+            "properties": {
+                "name": "Tokyo",
+                "weight": 5
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    100.5018,
+                    13.7563
+                ]
+            },
+            "properties": {
+                "name": "Bangkok",
+                "weight": 3
+            }
+        }
+    ]
+}
