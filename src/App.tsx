@@ -25,6 +25,7 @@ interface ColorScheme {
 export default function App() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
+  const asiaDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const [currentStyle, setCurrentStyle] = useState<MapStyle>("dark");
   const [dataViz, setDataViz] = useState<DataVisualization>("cluster");
   const [colorScheme, setColorScheme] = useState<ColorScheme>({
@@ -35,6 +36,9 @@ export default function App() {
   const [showMapStyle, setShowMapStyle] = useState(true);
   const [showDataViz, setShowDataViz] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(true);
+  const [showAddData, setShowAddData] = useState(false);
+  const [userFeatures, setUserFeatures] = useState<GeoJSON.Feature[]>([]);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
 
   useEffect(() => {
     const map = new mapboxgl.Map({
@@ -55,11 +59,16 @@ export default function App() {
       // Filter chỉ giữ các điểm ở châu Á (longitude: 25-180, latitude: -10-55)
       const asiaData = {
         ...data,
-        features: data.features.filter((feature: any) => {
-          const [lng, lat] = feature.geometry.coordinates;
+        features: data.features.filter((feature: unknown) => {
+          const f = feature as GeoJSON.Feature;
+          if (f.type !== "Feature" || f.geometry?.type !== "Point")
+            return false;
+          const [lng, lat] = f.geometry.coordinates as [number, number];
           return lng >= 25 && lng <= 180 && lat >= -10 && lat <= 55;
         }),
       };
+
+      asiaDataRef.current = asiaData;
 
       map.addSource("points", {
         type: "geojson",
@@ -75,6 +84,18 @@ export default function App() {
 
     return () => map.remove();
   }, [currentStyle, dataViz, colorScheme]);
+
+  useEffect(() => {
+    if (mapInstanceRef.current && asiaDataRef.current) {
+      const newData = {
+        ...asiaDataRef.current,
+        features: [...asiaDataRef.current.features, ...userFeatures],
+      };
+      (
+        mapInstanceRef.current.getSource("points") as mapboxgl.GeoJSONSource
+      )?.setData(newData);
+    }
+  }, [userFeatures]);
 
   const addVisualizationLayers = (
     map: mapboxgl.Map,
@@ -273,6 +294,58 @@ export default function App() {
     }));
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".json")) {
+      alert("Please select a JSON file");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const data = JSON.parse(content);
+
+        let features: GeoJSON.Feature[] = [];
+
+        if (data.type === "FeatureCollection" && data.features) {
+          features = data.features.filter((f: unknown) => {
+            const feature = f as GeoJSON.Feature;
+            return (
+              feature.type === "Feature" && feature.geometry?.type === "Point"
+            );
+          });
+        } else if (Array.isArray(data)) {
+          features = data.filter((f: unknown) => {
+            const feature = f as GeoJSON.Feature;
+            return (
+              feature.type === "Feature" && feature.geometry?.type === "Point"
+            );
+          });
+        } else {
+          throw new Error(
+            "Invalid JSON format. Expected FeatureCollection or array of Features.",
+          );
+        }
+
+        if (features.length === 0) {
+          alert("No valid Point features found in the file");
+          return;
+        }
+
+        setUserFeatures((prev) => [...prev, ...features]);
+        setUploadedFileName(file.name);
+        alert(`Added ${features.length} points from ${file.name}`);
+      } catch (error) {
+        alert("Error parsing JSON file: " + (error as Error).message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <>
       <div ref={mapRef} style={{ width: "100vw", height: "100vh" }} />
@@ -345,6 +418,25 @@ export default function App() {
           title="Toggle Color Picker Panel"
         >
           🎨 Colors
+        </button>
+        <button
+          onClick={() => setShowAddData(!showAddData)}
+          style={{
+            padding: "8px 12px",
+            background: showAddData
+              ? "rgba(255, 59, 48, 0.9)"
+              : "rgba(0, 0, 0, 0.7)",
+            color: "#fff",
+            border: "2px solid rgba(255, 255, 255, 0.3)",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "bold",
+            transition: "all 0.2s",
+          }}
+          title="Toggle Add Data Panel"
+        >
+          ➕ Add Data
         </button>
       </div>
 
@@ -712,6 +804,81 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Add Data Panel */}
+      {showAddData && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "20px",
+            right: "20px",
+            background: "rgba(0, 0, 0, 0.8)",
+            borderRadius: "8px",
+            padding: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            zIndex: 1000,
+            maxWidth: "300px",
+          }}
+        >
+          <div
+            style={{
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: "bold",
+              marginBottom: "4px",
+            }}
+          >
+            Upload JSON File
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleFileUpload}
+              style={{
+                padding: "8px",
+                borderRadius: "4px",
+                border: "1px solid #444",
+                background: "#2a2a2a",
+                color: "#fff",
+                fontSize: "12px",
+              }}
+            />
+            <div style={{ color: "#aaa", fontSize: "11px" }}>
+              Upload a GeoJSON FeatureCollection or array of Point features
+            </div>
+          </div>
+          {userFeatures.length > 0 && (
+            <div style={{ borderTop: "1px solid #444", paddingTop: "8px" }}>
+              <div
+                style={{ color: "#fff", fontSize: "12px", marginBottom: "4px" }}
+              >
+                Added Points: {userFeatures.length}
+                {uploadedFileName && ` from ${uploadedFileName}`}
+              </div>
+              <button
+                onClick={() => {
+                  setUserFeatures([]);
+                  setUploadedFileName("");
+                }}
+                style={{
+                  padding: "4px 8px",
+                  background: "#444",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "10px",
+                }}
+              >
+                Clear All
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>
