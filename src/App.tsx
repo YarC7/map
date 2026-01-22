@@ -14,7 +14,7 @@ const MAP_STYLES = {
 
 type MapStyle = keyof typeof MAP_STYLES;
 
-type DataVisualization = "cluster" | "heatmap" | "points" | "hexagon";
+type DataVisualization = "cluster" | "heatmap";
 
 interface ColorScheme {
   primary: string;
@@ -218,70 +218,6 @@ export default function App() {
           ],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
           "heatmap-opacity": 0.8,
-        },
-      });
-    } else if (vizType === "points") {
-      // All points without clustering
-      map.addLayer({
-        id: "points-layer",
-        type: "circle",
-        source: "points",
-        paint: {
-          "circle-color": [
-            "interpolate",
-            ["linear"],
-            ["get", "weight"],
-            1,
-            colors.tertiary + "60",
-            2,
-            colors.tertiary,
-            3,
-            colors.secondary,
-            4,
-            colors.primary,
-            5,
-            colors.primary,
-          ],
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["get", "weight"],
-            1,
-            4,
-            5,
-            12,
-          ],
-          "circle-opacity": 0.7,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#fff",
-        },
-      });
-    } else if (vizType === "hexagon") {
-      // Hexagon grid visualization (simplified as circles with density)
-      map.addLayer({
-        id: "hexagon-layer",
-        type: "circle",
-        source: "points",
-        paint: {
-          "circle-color": [
-            "interpolate",
-            ["linear"],
-            ["get", "weight"],
-            1,
-            colors.tertiary + "80",
-            2,
-            colors.tertiary,
-            3,
-            colors.secondary,
-            4,
-            colors.primary,
-            5,
-            colors.primary,
-          ],
-          "circle-radius": 8,
-          "circle-opacity": 0.6,
-          "circle-stroke-width": 1,
-          "circle-stroke-color": colors.primary,
         },
       });
     }
@@ -537,9 +473,7 @@ export default function App() {
           >
             Data Visualization
           </div>
-          {(
-            ["cluster", "heatmap", "points", "hexagon"] as DataVisualization[]
-          ).map((viz) => (
+          {(["cluster", "heatmap"] as DataVisualization[]).map((viz) => (
             <button
               key={viz}
               onClick={() => handleDataVizChange(viz)}
