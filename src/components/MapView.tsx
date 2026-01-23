@@ -270,6 +270,7 @@ export default function MapView({ onLogout }: MapViewProps) {
         setError(err instanceof Error ? err.message : "Failed to load data");
         setLoading(false);
         if (err instanceof Error && err.message === "Unauthorized") {
+          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
           onLogout();
         }
       }

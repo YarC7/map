@@ -13,25 +13,25 @@ export class ApiService {
   static setTokens(accessToken: string, refreshToken: string) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
-    localStorage.setItem("access_token", accessToken);
-    localStorage.setItem("refresh_token", refreshToken);
+    sessionStorage.setItem("access_token", accessToken);
+    sessionStorage.setItem("refresh_token", refreshToken);
   }
 
   static setAccessToken(token: string) {
     this.accessToken = token;
-    localStorage.setItem("access_token", token);
+    sessionStorage.setItem("access_token", token);
   }
 
   static getAccessToken(): string | null {
     if (!this.accessToken) {
-      this.accessToken = localStorage.getItem("access_token");
+      this.accessToken = sessionStorage.getItem("access_token");
     }
     return this.accessToken;
   }
 
   static getRefreshToken(): string | null {
     if (!this.refreshToken) {
-      this.refreshToken = localStorage.getItem("refresh_token");
+      this.refreshToken = sessionStorage.getItem("refresh_token");
     }
     return this.refreshToken;
   }
@@ -39,13 +39,13 @@ export class ApiService {
   static clearTokens() {
     this.accessToken = null;
     this.refreshToken = null;
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("refresh_token");
   }
 
   static clearAccessToken() {
     this.accessToken = null;
-    localStorage.removeItem("access_token");
+    sessionStorage.removeItem("access_token");
   }
 
   static async login(credentials: LoginCredentials): Promise<LoginResponse> {
