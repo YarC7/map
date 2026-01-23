@@ -9,6 +9,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 export class ApiService {
   private static accessToken: string | null = null;
   private static refreshToken: string | null = null;
+  private static accessTokenExpiry: Date | null = null;
+  private static refreshTimeout: number | null = null;
 
   static setTokens(accessToken: string, refreshToken: string) {
     this.accessToken = accessToken;
@@ -36,16 +38,51 @@ export class ApiService {
     return this.refreshToken;
   }
 
+  static setExpiry(expires: string) {
+    this.accessTokenExpiry = new Date(expires);
+  }
+
   static clearTokens() {
     this.accessToken = null;
     this.refreshToken = null;
+    this.accessTokenExpiry = null;
     sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("refresh_token");
+    this.stopAutoRefresh();
   }
 
   static clearAccessToken() {
     this.accessToken = null;
     sessionStorage.removeItem("access_token");
+  }
+
+  static startAutoRefresh() {
+    if (this.refreshTimeout) {
+      clearTimeout(this.refreshTimeout);
+    }
+    if (!this.accessTokenExpiry) return;
+
+    const now = new Date();
+    const timeUntilExpiry = this.accessTokenExpiry.getTime() - now.getTime();
+    const refreshBeforeExpiry = 15 * 60 * 1000; // 15 minutes in ms
+    const delay = Math.max(timeUntilExpiry - refreshBeforeExpiry, 0);
+
+    this.refreshTimeout = window.setTimeout(async () => {
+      try {
+        await this.refreshTokens();
+        this.startAutoRefresh(); // Restart with new expiry
+      } catch (error) {
+        // If refresh fails, stop auto refresh
+        console.error("Auto refresh failed:", error);
+      }
+    }, delay);
+  }
+
+  static stopAutoRefresh() {
+    if (this.refreshTimeout) {
+      clearTimeout(this.refreshTimeout);
+      this.refreshTimeout = null;
+    }
   }
 
   static async login(credentials: LoginCredentials): Promise<LoginResponse> {
@@ -64,6 +101,8 @@ export class ApiService {
 
     const data: LoginResponse = await response.json();
     this.setTokens(data.tokens.access.token, data.tokens.refresh.token);
+    this.setExpiry(data.tokens.access.expires);
+    this.startAutoRefresh();
     return data;
   }
 
@@ -90,6 +129,8 @@ export class ApiService {
 
     const data: LoginResponse = await response.json();
     this.setTokens(data.tokens.access.token, data.tokens.refresh.token);
+    this.setExpiry(data.tokens.access.expires);
+    this.startAutoRefresh();
   }
 
   static async getDeviceLocations(): Promise<DeviceLocation[]> {
