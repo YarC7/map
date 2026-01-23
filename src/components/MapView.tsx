@@ -92,6 +92,8 @@ export default function MapView({ onLogout }: MapViewProps) {
   // Update visible data based on map bounds
   const updateVisibleData = (map: mapboxgl.Map) => {
     const bounds = map.getBounds();
+    if (!bounds) return;
+
     const visibleLocations = filterLocationsByBounds(
       allLocationsRef.current,
       bounds,
@@ -241,6 +243,8 @@ export default function MapView({ onLogout }: MapViewProps) {
 
         // Filter by initial viewport
         const bounds = map.getBounds();
+        if (!bounds) return;
+
         const visibleLocations = filterLocationsByBounds(locations, bounds);
         const geoJSONData = deviceLocationsToGeoJSON(visibleLocations);
 

@@ -5,19 +5,16 @@ import { ApiService } from "./services/api";
 import type { User } from "./types/auth";
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return !!ApiService.getAccessToken();
   });
 
-  const handleLoginSuccess = (loggedInUser: User) => {
-    setUser(loggedInUser);
+  const handleLoginSuccess = (_loggedInUser: User) => {
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
     ApiService.clearTokens();
-    setUser(null);
     setIsAuthenticated(false);
   };
 
