@@ -167,6 +167,11 @@ export class ApiService {
       }
     }
 
+    if (response.status === 304) {
+      // Not Modified - data hasn't changed, return empty array to indicate no update needed
+      return [];
+    }
+
     if (!response.ok) {
       throw new Error("Failed to fetch device locations");
     }

@@ -1,5 +1,5 @@
 import mapboxgl from "mapbox-gl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Map, BarChart3, Palette, LogOut } from "lucide-react";
 import { ApiService } from "../services/api";
 import type { DeviceLocation } from "../types/auth";
@@ -62,6 +62,7 @@ export default function MapView({ onLogout }: MapViewProps) {
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const deviceDataRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const allLocationsRef = useRef<DeviceLocation[]>([]);
+  const intervalRef = useRef<number | null>(null);
   const [currentStyle, setCurrentStyle] = useState<MapStyle>("dark");
   const [dataViz, setDataViz] = useState<DataVisualization>("cluster");
   const [colorScheme, setColorScheme] = useState<ColorScheme>({
@@ -75,6 +76,7 @@ export default function MapView({ onLogout }: MapViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [visibleCount, setVisibleCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Filter locations within map bounds
   const filterLocationsByBounds = (
@@ -90,7 +92,7 @@ export default function MapView({ onLogout }: MapViewProps) {
   };
 
   // Update visible data based on map bounds
-  const updateVisibleData = (map: mapboxgl.Map) => {
+  const updateVisibleData = useCallback((map: mapboxgl.Map) => {
     const bounds = map.getBounds();
     if (!bounds) return;
 
@@ -107,7 +109,32 @@ export default function MapView({ onLogout }: MapViewProps) {
     if (source) {
       source.setData(geoJSONData);
     }
-  };
+  }, []);
+
+  // Function to fetch and update device locations
+  const fetchAndUpdateData = useCallback(async () => {
+    try {
+      const locations = await ApiService.getDeviceLocations();
+      // If locations is empty array, it means 304 Not Modified, skip update
+      if (locations.length === 0) {
+        return;
+      }
+      allLocationsRef.current = locations;
+      setTotalCount(locations.length);
+      setError(""); // Clear any previous error
+      if (mapInstanceRef.current) {
+        updateVisibleData(mapInstanceRef.current);
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message === "Unauthorized") {
+        setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        onLogout();
+      } else {
+        // For auto-refresh, don't show error overlay, just log
+        console.error("Failed to refresh data:", err);
+      }
+    }
+  }, [onLogout, updateVisibleData]);
 
   const addVisualizationLayers = (
     map: mapboxgl.Map,
@@ -237,31 +264,24 @@ export default function MapView({ onLogout }: MapViewProps) {
 
     map.on("load", async () => {
       try {
-        // Fetch device locations từ API
-        const locations = await ApiService.getDeviceLocations();
-        allLocationsRef.current = locations;
-
-        // Filter by initial viewport
-        const bounds = map.getBounds();
-        if (!bounds) return;
-
-        const visibleLocations = filterLocationsByBounds(locations, bounds);
-        const geoJSONData = deviceLocationsToGeoJSON(visibleLocations);
-
-        deviceDataRef.current = geoJSONData;
-        setVisibleCount(visibleLocations.length);
-
+        // Add source with empty data initially
         map.addSource("points", {
           type: "geojson",
-          data: geoJSONData,
+          data: { type: "FeatureCollection", features: [] },
           cluster: dataViz === "cluster",
           clusterRadius: 45,
           clusterMaxZoom: 5,
         });
 
+        // Fetch initial data
+        await fetchAndUpdateData();
+
         // Add layers based on visualization type
         addVisualizationLayers(map, dataViz, colorScheme);
         setLoading(false);
+
+        // Set up auto-refresh every 45 seconds
+        intervalRef.current = setInterval(fetchAndUpdateData, 45000);
 
         // Update data when map moves or zooms
         map.on("moveend", () => updateVisibleData(map));
@@ -276,8 +296,20 @@ export default function MapView({ onLogout }: MapViewProps) {
       }
     });
 
-    return () => map.remove();
-  }, [currentStyle, dataViz, colorScheme, onLogout]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      map.remove();
+    };
+  }, [
+    currentStyle,
+    dataViz,
+    colorScheme,
+    onLogout,
+    fetchAndUpdateData,
+    updateVisibleData,
+  ]);
 
   const handleStyleChange = (style: MapStyle) => {
     setCurrentStyle(style);
@@ -351,8 +383,8 @@ export default function MapView({ onLogout }: MapViewProps) {
             border: "2px solid rgba(255, 255, 255, 0.3)",
           }}
         >
-          📍 {visibleCount.toLocaleString()} /{" "}
-          {allLocationsRef.current.length.toLocaleString()} locations
+          📍 {visibleCount.toLocaleString()} / {totalCount.toLocaleString()}{" "}
+          locations
         </div>
       )}
 
