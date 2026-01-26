@@ -40,6 +40,43 @@ export class ApiService {
 
   static setExpiry(expires: string) {
     this.accessTokenExpiry = new Date(expires);
+    sessionStorage.setItem("access_token_expiry", expires);
+  }
+
+  static getExpiry(): Date | null {
+    if (!this.accessTokenExpiry) {
+      const expiry = sessionStorage.getItem("access_token_expiry");
+      if (expiry) {
+        this.accessTokenExpiry = new Date(expiry);
+      }
+    }
+    return this.accessTokenExpiry;
+  }
+
+  static isTokenExpired(): boolean {
+    const expiry = this.getExpiry();
+    if (!expiry) return true;
+
+    const now = new Date();
+    const timeUntilExpiry = expiry.getTime() - now.getTime();
+    // Consider token expired if less than 5 minutes remaining
+    const bufferTime = 5 * 60 * 1000; // 5 minutes in ms
+    return timeUntilExpiry <= bufferTime;
+  }
+
+  static async ensureValidToken(): Promise<void> {
+    const accessToken = this.getAccessToken();
+    const refreshToken = this.getRefreshToken();
+
+    // If no tokens, throw error
+    if (!accessToken || !refreshToken) {
+      throw new Error("No tokens available");
+    }
+
+    // If token is expired or about to expire, refresh it
+    if (this.isTokenExpired()) {
+      await this.refreshTokens();
+    }
   }
 
   static clearTokens() {
@@ -48,6 +85,7 @@ export class ApiService {
     this.accessTokenExpiry = null;
     sessionStorage.removeItem("access_token");
     sessionStorage.removeItem("refresh_token");
+    sessionStorage.removeItem("access_token_expiry");
     this.stopAutoRefresh();
   }
 
@@ -85,6 +123,59 @@ export class ApiService {
     }
   }
 
+  static async initializeAuth(): Promise<boolean> {
+    console.log("[Auth] Initializing authentication...");
+
+    const accessToken = this.getAccessToken();
+    const refreshToken = this.getRefreshToken();
+    const expiry = this.getExpiry();
+
+    // No tokens found
+    if (!accessToken || !refreshToken) {
+      console.log("[Auth] No tokens found in storage");
+      return false;
+    }
+
+    console.log("[Auth] Tokens found, validating...");
+    console.log("[Auth] Access token:", accessToken.substring(0, 20) + "...");
+    console.log("[Auth] Refresh token:", refreshToken.substring(0, 20) + "...");
+    console.log("[Auth] Token expiry:", expiry?.toISOString() || "not set");
+
+    // If no expiry info, tokens are invalid
+    if (!expiry) {
+      console.warn("[Auth] No expiry information found, clearing invalid tokens");
+      this.clearTokens();
+      return false;
+    }
+
+    // Tokens exist, check if they're valid
+    try {
+      // If token is expired or about to expire, try to refresh
+      if (this.isTokenExpired()) {
+        console.log("[Auth] Token expired or expiring soon, attempting refresh...");
+        await this.refreshTokens();
+      } else {
+        // Token is still valid, start auto-refresh
+        console.log("[Auth] Token is valid, starting auto-refresh");
+        this.startAutoRefresh();
+      }
+      console.log("[Auth] Authentication initialized successfully");
+      return true;
+    } catch (error) {
+      // If refresh fails, clear tokens and provide detailed error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("[Auth] Authentication initialization failed:", errorMessage);
+
+      // Check if it's a token not found error
+      if (errorMessage.includes("Token not found")) {
+        console.error("[Auth] Refresh token is invalid or expired. User needs to login again.");
+      }
+
+      this.clearTokens();
+      return false;
+    }
+  }
+
   static async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
@@ -113,6 +204,8 @@ export class ApiService {
       throw new Error("No refresh token available");
     }
 
+    console.log("[Auth] Attempting to refresh tokens...");
+
     const response = await fetch(`${API_BASE_URL}/auth/refresh-tokens`, {
       method: "POST",
       headers: {
@@ -123,17 +216,36 @@ export class ApiService {
     });
 
     if (!response.ok) {
+      let errorMessage = "Token refresh failed";
+
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+        console.error("[Auth] Token refresh failed:", errorData);
+      } catch (e) {
+        console.error("[Auth] Token refresh failed with status:", response.status);
+      }
+
       this.clearTokens();
-      throw new Error("Token refresh failed");
+      throw new Error(errorMessage);
     }
 
     const data: LoginResponse = await response.json();
     this.setTokens(data.tokens.access.token, data.tokens.refresh.token);
     this.setExpiry(data.tokens.access.expires);
     this.startAutoRefresh();
+    console.log("[Auth] Tokens refreshed successfully");
   }
 
   static async getDeviceLocations(): Promise<DeviceLocation[]> {
+    // Ensure token is valid before making request
+    try {
+      await this.ensureValidToken();
+    } catch (error) {
+      this.clearTokens();
+      throw new Error("Unauthorized");
+    }
+
     const token = this.getAccessToken();
 
     if (!token) {
@@ -148,7 +260,7 @@ export class ApiService {
       },
     });
 
-    // Auto refresh token if 401
+    // Auto refresh token if 401 (backup mechanism)
     if (response.status === 401) {
       try {
         await this.refreshTokens();
@@ -179,4 +291,33 @@ export class ApiService {
     const data: DeviceLocation[] = await response.json();
     return data;
   }
+
+  // Debug helpers - can be called from browser console
+  static debugAuthStatus() {
+    const status = {
+      hasAccessToken: !!this.getAccessToken(),
+      hasRefreshToken: !!this.getRefreshToken(),
+      expiry: this.getExpiry()?.toISOString() || "not set",
+      isExpired: this.isTokenExpired(),
+      accessTokenPreview: this.getAccessToken()?.substring(0, 30) + "...",
+      refreshTokenPreview: this.getRefreshToken()?.substring(0, 30) + "...",
+    };
+    console.table(status);
+    return status;
+  }
+
+  static forceLogout() {
+    console.log("[Auth] Force logout - clearing all tokens");
+    this.clearTokens();
+    window.location.reload();
+  }
+}
+
+// Expose to window for debugging (only in development)
+if (import.meta.env.DEV) {
+  (window as any).ApiService = ApiService;
+  console.log("[Dev] ApiService exposed to window for debugging");
+  console.log("[Dev] Available commands:");
+  console.log("  - ApiService.debugAuthStatus() - Check current auth status");
+  console.log("  - ApiService.forceLogout() - Clear tokens and reload");
 }

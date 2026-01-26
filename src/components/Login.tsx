@@ -6,9 +6,10 @@ import "./Login.css";
 
 interface LoginProps {
   onLoginSuccess: (user: User) => void;
+  initError?: string | null;
 }
 
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Login({ onLoginSuccess, initError }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +35,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     <div className="login-container">
       <div className="login-box">
         <h1>Map Admin Login</h1>
+
+        {initError && (
+          <div className="error-message" style={{ marginBottom: "16px" }}>
+            {initError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
