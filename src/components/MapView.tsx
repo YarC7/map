@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
-import { Map, Palette, LogOut } from "lucide-react";
+import { Map, Palette, LogOut, Settings, BarChart3 } from "lucide-react";
 import { ApiService } from "../services/api";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -32,14 +32,16 @@ interface MapViewProps {
 export default function MapView({ onLogout }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
-  const [currentStyle, setCurrentStyle] = useState<MapStyle>("dark");
+  const [currentStyle, setCurrentStyle] = useState<MapStyle>("streets");
   const [colorScheme, setColorScheme] = useState<ColorScheme>({
     primary: "#ff3b30",
     secondary: "#ff9500",
     tertiary: "#ffcc00",
   });
-  const [showMapStyle, setShowMapStyle] = useState(true);
-  const [showColorPicker, setShowColorPicker] = useState(true);
+  const [showMapStyle, setShowMapStyle] = useState(false);
+  const [showDataViz, setShowDataViz] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -232,37 +234,179 @@ export default function MapView({ onLogout }: MapViewProps) {
         </div>
       )} */}
 
-      {/* Toggle Buttons */}
-      <div style={{
-        position: "absolute", top: "15px", left: "50%",
-        transform: "translateX(-50%)", display: "flex", gap: "6px", zIndex: 1001,
-      }}>
-        <button
-          onClick={() => setShowMapStyle(!showMapStyle)}
-          style={{
-            padding: "6px 10px",
-            background: showMapStyle ? "rgba(255, 59, 48, 0.9)" : "rgba(0, 0, 0, 0.7)",
-            color: "#fff", border: "2px solid rgba(255, 255, 255, 0.3)",
-            borderRadius: "5px", cursor: "pointer", fontSize: "11px",
-            fontWeight: "bold", display: "flex", alignItems: "center",
-          }}
-        >
-          <Map size={14} style={{ marginRight: "4px" }} />
-          Map Style
-        </button>
-        <button
-          onClick={() => setShowColorPicker(!showColorPicker)}
-          style={{
-            padding: "6px 10px",
-            background: showColorPicker ? "rgba(255, 59, 48, 0.9)" : "rgba(0, 0, 0, 0.7)",
-            color: "#fff", border: "2px solid rgba(255, 255, 255, 0.3)",
-            borderRadius: "5px", cursor: "pointer", fontSize: "11px",
-            fontWeight: "bold", display: "flex", alignItems: "center",
-          }}
-        >
-          <Palette size={14} style={{ marginRight: "4px" }} />
-          Colors
-        </button>
+      {/* Menu Buttons */}
+      <div
+        style={{
+          position: "absolute",
+          top: "15px",
+          right: "15px",
+          display: "flex",
+          gap: "6px",
+          zIndex: 1001,
+          opacity: 0.3,
+          transition: "opacity 0.3s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = "1";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = "0.3";
+        }}
+      >
+        {/* Settings Dropdown */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            style={{
+              padding: "6px 10px",
+              background: showDropdown
+                ? "rgba(255, 59, 48, 0.9)"
+                : "rgba(0, 0, 0, 0.7)",
+              color: "#fff",
+              border: "2px solid rgba(255, 255, 255, 0.3)",
+              borderRadius: "5px",
+              cursor: "pointer",
+              fontSize: "11px",
+              fontWeight: "bold",
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+            }}
+            title="Settings"
+          >
+            <Settings size={14} style={{ marginRight: "4px" }} />
+            Settings
+          </button>
+
+          {/* Dropdown Menu */}
+          {showDropdown && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: "0",
+                background: "rgba(0, 0, 0, 0.9)",
+                borderRadius: "6px",
+                padding: "6px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+                minWidth: "160px",
+                border: "2px solid rgba(255, 255, 255, 0.3)",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setShowMapStyle(!showMapStyle);
+                  setShowDropdown(false);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  background: showMapStyle
+                    ? "rgba(255, 59, 48, 0.9)"
+                    : "rgba(40, 40, 40, 0.8)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => {
+                  if (!showMapStyle) {
+                    e.currentTarget.style.background = "rgba(60, 60, 60, 0.8)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!showMapStyle) {
+                    e.currentTarget.style.background = "rgba(40, 40, 40, 0.8)";
+                  }
+                }}
+              >
+                <Map size={14} style={{ marginRight: "8px" }} />
+                Map Style
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowDataViz(!showDataViz);
+                  setShowDropdown(false);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  background: showDataViz
+                    ? "rgba(255, 59, 48, 0.9)"
+                    : "rgba(40, 40, 40, 0.8)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => {
+                  if (!showDataViz) {
+                    e.currentTarget.style.background = "rgba(60, 60, 60, 0.8)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!showDataViz) {
+                    e.currentTarget.style.background = "rgba(40, 40, 40, 0.8)";
+                  }
+                }}
+              >
+                <BarChart3 size={14} style={{ marginRight: "8px" }} />
+                Visualization
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowColorPicker(!showColorPicker);
+                  setShowDropdown(false);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  background: showColorPicker
+                    ? "rgba(255, 59, 48, 0.9)"
+                    : "rgba(40, 40, 40, 0.8)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => {
+                  if (!showColorPicker) {
+                    e.currentTarget.style.background = "rgba(60, 60, 60, 0.8)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!showColorPicker) {
+                    e.currentTarget.style.background = "rgba(40, 40, 40, 0.8)";
+                  }
+                }}
+              >
+                <Palette size={14} style={{ marginRight: "8px" }} />
+                Colors
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Logout Button */}
         <button
           onClick={onLogout}
           style={{
@@ -279,13 +423,28 @@ export default function MapView({ onLogout }: MapViewProps) {
 
       {/* Map Style Panel */}
       {showMapStyle && (
-        <div style={{
-          position: "absolute", top: "60px", right: "20px",
-          background: "rgba(0, 0, 0, 0.8)", borderRadius: "8px",
-          padding: "12px", display: "flex", flexDirection: "column",
-          gap: "8px", zIndex: 1000,
-        }}>
-          <div style={{ color: "#fff", fontSize: "14px", fontWeight: "bold", marginBottom: "4px" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "60px",
+            right: "20px",
+            background: "rgba(0, 0, 0, 0.8)",
+            borderRadius: "8px",
+            padding: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: "bold",
+              marginBottom: "4px",
+            }}
+          >
             Map Style
           </div>
           {(Object.keys(MAP_STYLES) as MapStyle[]).map((style) => (
