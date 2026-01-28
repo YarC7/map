@@ -282,7 +282,7 @@ export default function MapView({ onLogout }: MapViewProps) {
         setLoading(false);
 
         // Set up auto-refresh every 45 seconds
-        intervalRef.current = setInterval(fetchAndUpdateData, 45000);
+        // intervalRef.current = setInterval(fetchAndUpdateData, 45000);
 
         // Update data when map moves or zooms
         map.on("moveend", () => updateVisibleData(map));
