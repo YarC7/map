@@ -151,15 +151,18 @@ export default function MapView({ onLogout }: MapViewProps) {
             const coords = (feature.geometry as GeoJSON.Point).coordinates.slice();
             const props = feature.properties || {};
 
-            new mapboxgl.Popup()
+            new mapboxgl.Popup({ className: "device-popup" })
               .setLngLat(coords as [number, number])
               .setHTML(`
-                <div style="padding: 8px;">
-                  <strong>Device</strong><br/>
-                  ${props.name ? `Name: ${props.name}<br/>` : ""}
-                  ${props.deviceType ? `Type: ${props.deviceType}<br/>` : ""}
-                  Lat: ${coords[1].toFixed(6)}<br/>
-                  Lng: ${coords[0].toFixed(6)}
+                <div style="padding: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                  <div style="font-weight: 700; font-size: 14px; color: #1a1a1a; margin-bottom: 8px; border-bottom: 2px solid #ff3b30; padding-bottom: 6px;">
+                    Device Info
+                  </div>
+                  ${props.name ? `<div style="margin-bottom: 4px;"><span style="color: #666; font-size: 12px;">Name:</span><br/><span style="color: #1a1a1a; font-weight: 500;">${props.name}</span></div>` : ""}
+                  ${props.deviceType ? `<div style="margin-bottom: 4px;"><span style="color: #666; font-size: 12px;">Type:</span><br/><span style="color: #1a1a1a; font-weight: 500; text-transform: capitalize;">${props.deviceType}</span></div>` : ""}
+                  <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 11px; color: #888;">
+                    📍 ${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}
+                  </div>
                 </div>
               `)
               .addTo(map);

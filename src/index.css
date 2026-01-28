@@ -66,3 +66,20 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+
+/* Mapbox Popup Styles */
+.mapboxgl-popup-close-button {
+  color: #333 !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
+  padding: 4px 8px !important;
+  right: 4px !important;
+  top: 4px !important;
+  outline: none;
+}
+
+.mapboxgl-popup-close-button:hover {
+  color: #ff3b30 !important;
+  background: transparent !important;
+}
