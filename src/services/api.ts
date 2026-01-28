@@ -124,26 +124,17 @@ export class ApiService {
   }
 
   static async initializeAuth(): Promise<boolean> {
-    console.log("[Auth] Initializing authentication...");
-
     const accessToken = this.getAccessToken();
     const refreshToken = this.getRefreshToken();
     const expiry = this.getExpiry();
 
     // No tokens found
     if (!accessToken || !refreshToken) {
-      console.log("[Auth] No tokens found in storage");
       return false;
     }
 
-    console.log("[Auth] Tokens found, validating...");
-    console.log("[Auth] Access token:", accessToken.substring(0, 20) + "...");
-    console.log("[Auth] Refresh token:", refreshToken.substring(0, 20) + "...");
-    console.log("[Auth] Token expiry:", expiry?.toISOString() || "not set");
-
     // If no expiry info, tokens are invalid
     if (!expiry) {
-      console.warn("[Auth] No expiry information found, clearing invalid tokens");
       this.clearTokens();
       return false;
     }
@@ -152,23 +143,19 @@ export class ApiService {
     try {
       // If token is expired or about to expire, try to refresh
       if (this.isTokenExpired()) {
-        console.log("[Auth] Token expired or expiring soon, attempting refresh...");
         await this.refreshTokens();
       } else {
         // Token is still valid, start auto-refresh
-        console.log("[Auth] Token is valid, starting auto-refresh");
         this.startAutoRefresh();
       }
-      console.log("[Auth] Authentication initialized successfully");
       return true;
     } catch (error) {
       // If refresh fails, clear tokens and provide detailed error
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("[Auth] Authentication initialization failed:", errorMessage);
 
       // Check if it's a token not found error
       if (errorMessage.includes("Token not found")) {
-        console.error("[Auth] Refresh token is invalid or expired. User needs to login again.");
+        console.error("Refresh token is invalid or expired. User needs to login again.");
       }
 
       this.clearTokens();
@@ -190,11 +177,17 @@ export class ApiService {
       throw new Error("Login failed");
     }
 
-    const data: LoginResponse = await response.json();
-    this.setTokens(data.tokens.access.token, data.tokens.refresh.token);
-    this.setExpiry(data.tokens.access.expires);
-    this.startAutoRefresh();
-    return data;
+    const data = await response.json();
+    const tokens = data.tokens || data;
+
+    if (tokens?.access?.token && tokens?.refresh?.token) {
+      this.setTokens(tokens.access.token, tokens.refresh.token);
+      this.setExpiry(tokens.access.expires);
+      this.startAutoRefresh();
+      return data;
+    } else {
+      throw new Error("Invalid login response structure");
+    }
   }
 
   static async refreshTokens(): Promise<void> {
@@ -203,8 +196,6 @@ export class ApiService {
     if (!refreshToken) {
       throw new Error("No refresh token available");
     }
-
-    console.log("[Auth] Attempting to refresh tokens...");
 
     const response = await fetch(`${API_BASE_URL}/auth/refresh-tokens`, {
       method: "POST",
@@ -221,20 +212,25 @@ export class ApiService {
       try {
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
-        console.error("[Auth] Token refresh failed:", errorData);
       } catch (e) {
-        console.error("[Auth] Token refresh failed with status:", response.status);
+        console.error("Token refresh failed with status:", response.status);
       }
 
       this.clearTokens();
       throw new Error(errorMessage);
     }
 
-    const data: LoginResponse = await response.json();
-    this.setTokens(data.tokens.access.token, data.tokens.refresh.token);
-    this.setExpiry(data.tokens.access.expires);
-    this.startAutoRefresh();
-    console.log("[Auth] Tokens refreshed successfully");
+    const data = await response.json();
+    const tokens = data.tokens || data;
+
+    if (tokens?.access?.token && tokens?.refresh?.token) {
+      this.setTokens(tokens.access.token, tokens.refresh.token);
+      this.setExpiry(tokens.access.expires);
+      this.startAutoRefresh();
+    } else {
+      this.clearTokens();
+      throw new Error("Invalid token response structure");
+    }
   }
 
   static async getDeviceLocations(): Promise<DeviceLocation[]> {

@@ -38,79 +38,136 @@ export default function MapView({ onLogout }: MapViewProps) {
     secondary: "#ff9500",
     tertiary: "#ffcc00",
   });
-  const [showMapStyle, setShowMapStyle] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showDataViz, setShowDataViz] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const addMVTLayers = (map: mapboxgl.Map, colors: ColorScheme) => {
+  const addMVTLayers = (
+    map: mapboxgl.Map,
+    colors: ColorScheme,
+    showHeatmap: boolean
+  ) => {
     // Remove existing layers
-    const layersToRemove = ["mvt-clusters", "mvt-cluster-count", "mvt-points"];
+    const layersToRemove = [
+      "mvt-clusters",
+      "mvt-cluster-count",
+      "mvt-points",
+      "mvt-heatmap",
+    ];
     layersToRemove.forEach((layerId) => {
       if (map.getLayer(layerId)) {
         map.removeLayer(layerId);
       }
     });
 
-    // Cluster circles
-    map.addLayer({
-      id: "mvt-clusters",
-      type: "circle",
-      source: "mvt-points",
-      "source-layer": "devices",
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          colors.tertiary,
-          10, colors.secondary,
-          50, colors.primary,
-        ],
-        "circle-radius": [
-          "step",
-          ["get", "point_count"],
-          15,
-          10, 20,
-          50, 25,
-        ],
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#fff",
-      },
-    });
+    if (showHeatmap) {
+      // Heatmap layer for high-density data visualization
+      map.addLayer({
+        id: "mvt-heatmap",
+        type: "heatmap",
+        source: "mvt-points",
+        "source-layer": "devices",
+        maxzoom: 15,
+        paint: {
+          "heatmap-weight": 1,
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0,0,0,0)",
+            0.2,
+            colors.tertiary,
+            0.4,
+            colors.secondary,
+            1,
+            colors.primary,
+          ],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
+          "heatmap-opacity": 0.85,
+        },
+      });
 
-    // Cluster count labels
-    map.addLayer({
-      id: "mvt-cluster-count",
-      type: "symbol",
-      source: "mvt-points",
-      "source-layer": "devices",
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count}",
-        "text-size": 12,
-      },
-      paint: {
-        "text-color": "#fff",
-      },
-    });
+      // Also add small points on top of heatmap at high zoom
+      map.addLayer({
+        id: "mvt-points",
+        type: "circle",
+        source: "mvt-points",
+        "source-layer": "devices",
+        minzoom: 8,
+        paint: {
+          "circle-color": colors.primary,
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1, 12, 4],
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "#fff",
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 10, 1],
+        },
+      });
+    } else {
+      // Cluster circles
+      map.addLayer({
+        id: "mvt-clusters",
+        type: "circle",
+        source: "mvt-points",
+        "source-layer": "devices",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": [
+            "step",
+            ["get", "point_count"],
+            colors.tertiary,
+            10,
+            colors.secondary,
+            50,
+            colors.primary,
+          ],
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            15,
+            10,
+            20,
+            50,
+            25,
+          ],
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#fff",
+        },
+      });
 
-    // Individual points
-    map.addLayer({
-      id: "mvt-points",
-      type: "circle",
-      source: "mvt-points",
-      "source-layer": "devices",
-      filter: ["!", ["has", "point_count"]],
-      paint: {
-        "circle-color": colors.primary,
-        "circle-radius": 6,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#fff",
-      },
-    });
+      // Cluster count labels
+      map.addLayer({
+        id: "mvt-cluster-count",
+        type: "symbol",
+        source: "mvt-points",
+        "source-layer": "devices",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": "{point_count}",
+          "text-size": 12,
+        },
+        paint: {
+          "text-color": "#fff",
+        },
+      });
+
+      // Individual points
+      map.addLayer({
+        id: "mvt-points",
+        type: "circle",
+        source: "mvt-points",
+        "source-layer": "devices",
+        filter: ["!", ["has", "point_count"]],
+        paint: {
+          "circle-color": colors.primary,
+          "circle-radius": 6,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#fff",
+        },
+      });
+    }
   };
 
   useEffect(() => {
@@ -144,7 +201,7 @@ export default function MapView({ onLogout }: MapViewProps) {
           maxzoom: 14,
         });
 
-        addMVTLayers(map, colorScheme);
+        addMVTLayers(map, colorScheme, showDataViz);
 
         // Click handler for points
         map.on("click", "mvt-points", (e) => {
@@ -187,7 +244,7 @@ export default function MapView({ onLogout }: MapViewProps) {
     });
 
     return () => map.remove();
-  }, [currentStyle, colorScheme]);
+  }, [currentStyle, colorScheme, showDataViz]);
 
   const handleStyleChange = (style: MapStyle) => setCurrentStyle(style);
 
@@ -229,8 +286,11 @@ export default function MapView({ onLogout }: MapViewProps) {
           padding: "8px 12px", borderRadius: "6px", fontSize: "11px",
           fontWeight: "bold", zIndex: 1000,
           border: "2px solid rgba(255, 255, 255, 0.3)",
+          display: "flex", alignItems: "center", gap: "6px"
         }}>
-          MVT Vector Tiles
+          <span>{showDataViz ? "� Heatmap View" : "📍 Cluster View"}</span>
+          <span style={{ color: "rgba(255,255,255,0.4)" }}>|</span>
+          <span>MVT Vector Tiles</span>
         </div>
       )} */}
 
@@ -253,20 +313,20 @@ export default function MapView({ onLogout }: MapViewProps) {
           e.currentTarget.style.opacity = "0.3";
         }}
       >
-        {/* Settings Dropdown */}
+        {/* Settings Button */}
         <div style={{ position: "relative" }}>
           <button
-            onClick={() => setShowDropdown(!showDropdown)}
+            onClick={() => setShowSettings(!showSettings)}
             style={{
-              padding: "6px 10px",
-              background: showDropdown
+              padding: "6px 12px",
+              background: showSettings
                 ? "rgba(255, 59, 48, 0.9)"
                 : "rgba(0, 0, 0, 0.7)",
               color: "#fff",
               border: "2px solid rgba(255, 255, 255, 0.3)",
               borderRadius: "5px",
               cursor: "pointer",
-              fontSize: "11px",
+              fontSize: "12px",
               fontWeight: "bold",
               transition: "all 0.2s",
               display: "flex",
@@ -274,134 +334,147 @@ export default function MapView({ onLogout }: MapViewProps) {
             }}
             title="Settings"
           >
-            <Settings size={14} style={{ marginRight: "4px" }} />
+            <Settings size={14} style={{ marginRight: "6px" }} />
             Settings
           </button>
 
-          {/* Dropdown Menu */}
-          {showDropdown && (
+          {/* Unified Settings Panel */}
+          {showSettings && (
             <div
               style={{
                 position: "absolute",
-                top: "calc(100% + 6px)",
+                top: "calc(100% + 10px)",
                 right: "0",
-                background: "rgba(0, 0, 0, 0.9)",
-                borderRadius: "6px",
-                padding: "6px",
+                background: "rgba(0, 0, 0, 0.95)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "12px",
+                padding: "20px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "4px",
-                minWidth: "160px",
-                border: "2px solid rgba(255, 255, 255, 0.3)",
+                gap: "20px",
+                width: "280px",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
               }}
             >
-              <button
-                onClick={() => {
-                  setShowMapStyle(!showMapStyle);
-                  setShowDropdown(false);
-                }}
-                style={{
-                  padding: "8px 12px",
-                  background: showMapStyle
-                    ? "rgba(255, 59, 48, 0.9)"
-                    : "rgba(40, 40, 40, 0.8)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "11px",
-                  fontWeight: "bold",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showMapStyle) {
-                    e.currentTarget.style.background = "rgba(60, 60, 60, 0.8)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showMapStyle) {
-                    e.currentTarget.style.background = "rgba(40, 40, 40, 0.8)";
-                  }
-                }}
-              >
-                <Map size={14} style={{ marginRight: "8px" }} />
-                Map Style
-              </button>
+              {/* Data Visualization Section */}
+              <section>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
+                  Visualization Mode
+                  <BarChart3 size={12} />
+                </div>
+                <div style={{ display: "flex", background: "rgba(255,255,255,0.1)", borderRadius: "8px", padding: "4px" }}>
+                  <button
+                    onClick={() => setShowDataViz(false)}
+                    style={{
+                      flex: 1,
+                      padding: "8px",
+                      background: !showDataViz ? "rgba(255, 255, 255, 0.2)" : "transparent",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    📍 Clusters
+                  </button>
+                  <button
+                    onClick={() => setShowDataViz(true)}
+                    style={{
+                      flex: 1,
+                      padding: "8px",
+                      background: showDataViz ? "rgba(255, 255, 255, 0.2)" : "transparent",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    🔥 Heatmap
+                  </button>
+                </div>
+              </section>
 
-              <button
-                onClick={() => {
-                  setShowDataViz(!showDataViz);
-                  setShowDropdown(false);
-                }}
-                style={{
-                  padding: "8px 12px",
-                  background: showDataViz
-                    ? "rgba(255, 59, 48, 0.9)"
-                    : "rgba(40, 40, 40, 0.8)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "11px",
-                  fontWeight: "bold",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showDataViz) {
-                    e.currentTarget.style.background = "rgba(60, 60, 60, 0.8)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showDataViz) {
-                    e.currentTarget.style.background = "rgba(40, 40, 40, 0.8)";
-                  }
-                }}
-              >
-                <BarChart3 size={14} style={{ marginRight: "8px" }} />
-                Visualization
-              </button>
+              {/* Map Style Section */}
+              <section>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
+                  Map Style
+                  <Map size={12} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  {(Object.keys(MAP_STYLES) as MapStyle[]).map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => handleStyleChange(style)}
+                      style={{
+                        padding: "8px",
+                        background: currentStyle === style ? "rgba(255, 59, 48, 0.8)" : "rgba(255, 255, 255, 0.1)",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "10px",
+                        fontWeight: "600",
+                        textAlign: "center",
+                      }}
+                    >
+                      {style === "satelliteStreets" ? "Sat Streets" : style.charAt(0).toUpperCase() + style.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </section>
 
-              <button
-                onClick={() => {
-                  setShowColorPicker(!showColorPicker);
-                  setShowDropdown(false);
-                }}
-                style={{
-                  padding: "8px 12px",
-                  background: showColorPicker
-                    ? "rgba(255, 59, 48, 0.9)"
-                    : "rgba(40, 40, 40, 0.8)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "11px",
-                  fontWeight: "bold",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showColorPicker) {
-                    e.currentTarget.style.background = "rgba(60, 60, 60, 0.8)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showColorPicker) {
-                    e.currentTarget.style.background = "rgba(40, 40, 40, 0.8)";
-                  }
-                }}
-              >
-                <Palette size={14} style={{ marginRight: "8px" }} />
-                Colors
-              </button>
+              {/* Color Scheme Section */}
+              <section>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
+                  Color Scheme
+                  <Palette size={12} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {(["primary", "secondary", "tertiary"] as const).map((colorType) => (
+                    <div key={colorType} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ color: "#fff", fontSize: "10px", textTransform: "capitalize" }}>{colorType}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ color: "#888", fontSize: "9px", fontFamily: "monospace" }}>{colorScheme[colorType]}</span>
+                        <input
+                          type="color"
+                          value={colorScheme[colorType]}
+                          onChange={(e) => handleColorChange(colorType, e.target.value)}
+                          style={{
+                            width: "24px", height: "24px", padding: 0, border: "none",
+                            borderRadius: "4px", cursor: "pointer", background: "transparent",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Presets */}
+                <div style={{ display: "flex", gap: "4px", marginTop: "12px", overflowX: "auto", paddingBottom: "4px" }}>
+                  {[
+                    { name: "Hot", colors: { primary: "#ff3b30", secondary: "#ff9500", tertiary: "#ffcc00" } },
+                    { name: "Cool", colors: { primary: "#007aff", secondary: "#5ac8fa", tertiary: "#a0d9ff" } },
+                    { name: "Green", colors: { primary: "#34c759", secondary: "#30d158", tertiary: "#a8f5ba" } },
+                  ].map((preset) => (
+                    <button
+                      key={preset.name}
+                      onClick={() => setColorScheme(preset.colors)}
+                      style={{
+                        padding: "4px 8px",
+                        background: "rgba(255,255,255,0.1)",
+                        border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px",
+                        cursor: "pointer", fontSize: "9px", color: "#fff",
+                      }}
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+              </section>
             </div>
           )}
         </div>
@@ -410,118 +483,25 @@ export default function MapView({ onLogout }: MapViewProps) {
         <button
           onClick={onLogout}
           style={{
-            padding: "6px 10px", background: "rgba(255, 59, 48, 0.9)",
-            color: "#fff", border: "2px solid rgba(255, 255, 255, 0.3)",
-            borderRadius: "5px", cursor: "pointer", fontSize: "11px",
-            fontWeight: "bold", display: "flex", alignItems: "center",
+            padding: "6px 12px",
+            background: "rgba(255, 59, 48, 0.9)",
+            color: "#fff",
+            border: "2px solid rgba(255, 255, 255, 0.3)",
+            borderRadius: "5px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            transition: "all 0.2s",
           }}
         >
-          <LogOut size={14} style={{ marginRight: "4px" }} />
+          <LogOut size={14} style={{ marginRight: "6px" }} />
           Logout
         </button>
       </div>
 
-      {/* Map Style Panel */}
-      {showMapStyle && (
-        <div
-          style={{
-            position: "absolute",
-            top: "60px",
-            right: "20px",
-            background: "rgba(0, 0, 0, 0.8)",
-            borderRadius: "8px",
-            padding: "12px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              color: "#fff",
-              fontSize: "14px",
-              fontWeight: "bold",
-              marginBottom: "4px",
-            }}
-          >
-            Map Style
-          </div>
-          {(Object.keys(MAP_STYLES) as MapStyle[]).map((style) => (
-            <button
-              key={style}
-              onClick={() => handleStyleChange(style)}
-              style={{
-                padding: "8px 16px",
-                background: currentStyle === style ? "#ff3b30" : "#2a2a2a",
-                color: "#fff",
-                border: currentStyle === style ? "2px solid #ff3b30" : "2px solid #444",
-                borderRadius: "4px", cursor: "pointer", fontSize: "13px",
-                fontWeight: currentStyle === style ? "bold" : "normal",
-              }}
-            >
-              {style === "satelliteStreets" ? "Satellite Streets" : style.charAt(0).toUpperCase() + style.slice(1)}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Color Picker Panel */}
-      {showColorPicker && (
-        <div style={{
-          position: "absolute", bottom: "20px", left: "20px",
-          background: "rgba(0, 0, 0, 0.8)", borderRadius: "8px",
-          padding: "12px", display: "flex", flexDirection: "column",
-          gap: "12px", zIndex: 1000,
-        }}>
-          <div style={{ color: "#fff", fontSize: "14px", fontWeight: "bold" }}>
-            Color Scheme
-          </div>
-          {(["primary", "secondary", "tertiary"] as const).map((colorType) => (
-            <div key={colorType} style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <label style={{ color: "#fff", fontSize: "12px", minWidth: "70px" }}>
-                {colorType.charAt(0).toUpperCase() + colorType.slice(1)}:
-              </label>
-              <input
-                type="color"
-                value={colorScheme[colorType]}
-                onChange={(e) => handleColorChange(colorType, e.target.value)}
-                style={{
-                  width: "50px", height: "30px", border: "2px solid #444",
-                  borderRadius: "4px", cursor: "pointer", background: "transparent",
-                }}
-              />
-              <span style={{ color: "#aaa", fontSize: "11px", fontFamily: "monospace" }}>
-                {colorScheme[colorType]}
-              </span>
-            </div>
-          ))}
-          <div style={{ borderTop: "1px solid #444", paddingTop: "8px" }}>
-            <div style={{ color: "#fff", fontSize: "12px", marginBottom: "8px" }}>Presets:</div>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {[
-                { name: "Hot", colors: { primary: "#ff3b30", secondary: "#ff9500", tertiary: "#ffcc00" } },
-                { name: "Cool", colors: { primary: "#007aff", secondary: "#5ac8fa", tertiary: "#a0d9ff" } },
-                { name: "Green", colors: { primary: "#34c759", secondary: "#30d158", tertiary: "#a8f5ba" } },
-                { name: "Purple", colors: { primary: "#af52de", secondary: "#bf5af2", tertiary: "#e5b3ff" } },
-              ].map((preset) => (
-                <button
-                  key={preset.name}
-                  onClick={() => setColorScheme(preset.colors)}
-                  style={{
-                    padding: "6px 10px",
-                    background: `linear-gradient(135deg, ${preset.colors.primary}, ${preset.colors.secondary}, ${preset.colors.tertiary})`,
-                    border: "2px solid #444", borderRadius: "4px",
-                    cursor: "pointer", fontSize: "11px", color: "#fff", fontWeight: "bold",
-                  }}
-                >
-                  {preset.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Clean up old panels */}
     </>
   );
 }
