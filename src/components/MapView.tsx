@@ -220,7 +220,7 @@ export default function MapView({ onLogout }: MapViewProps) {
       )}
 
       {/* Badge */}
-      {!loading && !error && (
+      {/* {!loading && !error && (
         <div style={{
           position: "absolute", bottom: "20px", right: "20px",
           background: "rgba(0, 0, 0, 0.8)", color: "#fff",
@@ -228,9 +228,9 @@ export default function MapView({ onLogout }: MapViewProps) {
           fontWeight: "bold", zIndex: 1000,
           border: "2px solid rgba(255, 255, 255, 0.3)",
         }}>
-          🗺️ MVT Vector Tiles
+          MVT Vector Tiles
         </div>
-      )}
+      )} */}
 
       {/* Toggle Buttons */}
       <div style={{
