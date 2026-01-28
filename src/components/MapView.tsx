@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
-import { useEffect, useRef, useState } from "react";
-import { Map, Palette, LogOut, Settings, BarChart3 } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Map, BarChart3, Palette, LogOut, Settings } from "lucide-react";
 import { ApiService } from "../services/api";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
