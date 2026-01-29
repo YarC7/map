@@ -546,36 +546,6 @@ export default function MapView() {
             </div>
           )}
         </div>
-
-        {/* Logout Button */}
-        {/* <button
-          onClick={onLogout}
-          style={{
-            padding: "6px 12px",
-            background: "rgba(255, 59, 48, 0.9)",
-            color: "#fff",
-            border: "2px solid rgba(255, 255, 255, 0.3)",
-            borderRadius: "5px",
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            transition: "all 0.2s",
-          }}
-        >
-          <LogOut size={14} style={{ marginRight: isMenuHovered ? "6px" : "0", transition: "margin 0.2s" }} />
-          <span style={{
-            maxWidth: isMenuHovered ? "100px" : "0",
-            opacity: isMenuHovered ? 1 : 0,
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-            transition: "all 0.3s ease",
-            display: "inline-block"
-          }}>
-            Logout
-          </span>
-        </button> */}
       </div>
 
       {/* Clean up old panels */}

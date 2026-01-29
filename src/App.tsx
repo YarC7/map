@@ -36,11 +36,6 @@ export default function App() {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
-    ApiService.clearTokens();
-    setIsAuthenticated(false);
-  };
-
   // Show loading while checking auth status
   if (isInitializing) {
     return (
@@ -64,5 +59,5 @@ export default function App() {
     return <Login onLoginSuccess={handleLoginSuccess} initError={initError} />;
   }
 
-  return <MapView onLogout={handleLogout} />;
+  return <MapView />;
 }
