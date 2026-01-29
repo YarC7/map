@@ -42,6 +42,7 @@ export default function MapView({ onLogout }: MapViewProps) {
   const [showDataViz, setShowDataViz] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isMenuHovered, setIsMenuHovered] = useState(false);
 
   const addMVTLayers = (
     map: mapboxgl.Map,
@@ -346,15 +347,11 @@ export default function MapView({ onLogout }: MapViewProps) {
           display: "flex",
           gap: "6px",
           zIndex: 1001,
-          opacity: 0.3,
+          opacity: isMenuHovered ? 1 : 0.3,
           transition: "opacity 0.3s ease",
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = "1";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = "0.3";
-        }}
+        onMouseEnter={() => setIsMenuHovered(true)}
+        onMouseLeave={() => setIsMenuHovered(false)}
       >
         {/* Settings Button */}
         <div style={{ position: "relative" }}>
@@ -377,8 +374,17 @@ export default function MapView({ onLogout }: MapViewProps) {
             }}
             title="Settings"
           >
-            <Settings size={14} style={{ marginRight: "6px" }} />
-            Settings
+            <Settings size={14} style={{ marginRight: isMenuHovered ? "6px" : "0", transition: "margin 0.2s" }} />
+            <span style={{
+              maxWidth: isMenuHovered ? "100px" : "0",
+              opacity: isMenuHovered ? 1 : 0,
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              transition: "all 0.3s ease",
+              display: "inline-block"
+            }}>
+              Settings
+            </span>
           </button>
 
           {/* Unified Settings Panel */}
@@ -539,8 +545,17 @@ export default function MapView({ onLogout }: MapViewProps) {
             transition: "all 0.2s",
           }}
         >
-          <LogOut size={14} style={{ marginRight: "6px" }} />
-          Logout
+          <LogOut size={14} style={{ marginRight: isMenuHovered ? "6px" : "0", transition: "margin 0.2s" }} />
+          <span style={{
+            maxWidth: isMenuHovered ? "100px" : "0",
+            opacity: isMenuHovered ? 1 : 0,
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            transition: "all 0.3s ease",
+            display: "inline-block"
+          }}>
+            Logout
+          </span>
         </button>
       </div>
 
