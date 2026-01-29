@@ -288,6 +288,50 @@ export class ApiService {
     return data;
   }
 
+  static async getDeviceCount(): Promise<number> {
+    try {
+      await this.ensureValidToken();
+    } catch (error) {
+      this.clearTokens();
+      throw new Error("Unauthorized");
+    }
+
+    const token = this.getAccessToken();
+    if (!token) throw new Error("No access token available");
+
+    let response = await fetch(`${API_BASE_URL}/device-info/count`, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 401) {
+      try {
+        await this.refreshTokens();
+        const newToken = this.getAccessToken();
+        response = await fetch(`${API_BASE_URL}/device-info/count`, {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+            Authorization: `Bearer ${newToken}`,
+          },
+        });
+      } catch (error) {
+        this.clearTokens();
+        throw new Error("Unauthorized");
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch device count");
+    }
+
+    const data = await response.json();
+    return typeof data === "number" ? data : (data.count || 0);
+  }
+
   // Debug helpers - can be called from browser console
   static debugAuthStatus() {
     const status = {

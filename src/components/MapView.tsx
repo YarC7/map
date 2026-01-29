@@ -43,6 +43,7 @@ export default function MapView({ onLogout }: MapViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isMenuHovered, setIsMenuHovered] = useState(false);
+  const [deviceCount, setDeviceCount] = useState<number | null>(null);
 
   const addMVTLayers = (
     map: mapboxgl.Map,
@@ -290,6 +291,22 @@ export default function MapView({ onLogout }: MapViewProps) {
     };
   }, [currentStyle, colorScheme, showDataViz]);
 
+  useEffect(() => {
+    const fetchDeviceCount = async () => {
+      try {
+        const count = await ApiService.getDeviceCount();
+        setDeviceCount(count);
+      } catch (err) {
+        console.error("Failed to fetch device count:", err);
+      }
+    };
+
+    fetchDeviceCount();
+    // Refresh count every 5 minutes
+    const interval = setInterval(fetchDeviceCount, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleStyleChange = (style: MapStyle) => setCurrentStyle(style);
 
   const handleColorChange = (colorType: keyof ColorScheme, value: string) => {
@@ -323,20 +340,24 @@ export default function MapView({ onLogout }: MapViewProps) {
       )}
 
       {/* Badge */}
-      {/* {!loading && !error && (
+      {!loading && !error && (
         <div style={{
-          position: "absolute", bottom: "20px", right: "20px",
+          position: "absolute", bottom: "20px", right: "0px",
           background: "rgba(0, 0, 0, 0.8)", color: "#fff",
           padding: "8px 12px", borderRadius: "6px", fontSize: "11px",
           fontWeight: "bold", zIndex: 1000,
           border: "2px solid rgba(255, 255, 255, 0.3)",
-          display: "flex", alignItems: "center", gap: "6px"
+          display: "flex", alignItems: "center", gap: "10px",
+          backdropFilter: "blur(4px)"
         }}>
-          <span>{showDataViz ? "� Heatmap View" : "📍 Cluster View"}</span>
-          <span style={{ color: "rgba(255,255,255,0.4)" }}>|</span>
-          <span>MVT Vector Tiles</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <span style={{ color: "rgba(255,255,255,0.6)" }}>Total Devices:</span>
+            <span style={{ color: colorScheme.primary, fontSize: "12px" }}>
+              {deviceCount !== null ? deviceCount.toLocaleString() : "..."}
+            </span>
+          </div>
         </div>
-      )} */}
+      )}
 
       {/* Menu Buttons */}
       <div
