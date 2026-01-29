@@ -550,7 +550,7 @@ export default function MapView({ onLogout }: MapViewProps) {
         </div>
 
         {/* Logout Button */}
-        <button
+        {/* <button
           onClick={onLogout}
           style={{
             padding: "6px 12px",
@@ -577,7 +577,7 @@ export default function MapView({ onLogout }: MapViewProps) {
           }}>
             Logout
           </span>
-        </button>
+        </button> */}
       </div>
 
       {/* Clean up old panels */}
