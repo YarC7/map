@@ -42,6 +42,7 @@ export default function MapView() {
   const [error, setError] = useState("");
   const [isMenuHovered, setIsMenuHovered] = useState(false);
   const [deviceCount, setDeviceCount] = useState<number | null>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
 
   const addMVTLayers = (
     map: mapboxgl.Map,
@@ -305,11 +306,32 @@ export default function MapView() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleStyleChange = (style: MapStyle) => setCurrentStyle(style);
+  const handleStyleChange = (style: MapStyle) => {
+    setCurrentStyle(style);
+    setShowSettings(false);
+  };
 
   const handleColorChange = (colorType: keyof ColorScheme, value: string) => {
     setColorScheme((prev) => ({ ...prev, [colorType]: value }));
   };
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    }
+
+    if (showSettings) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showSettings]);
 
   return (
     <>
@@ -373,7 +395,7 @@ export default function MapView() {
         onMouseLeave={() => setIsMenuHovered(false)}
       >
         {/* Settings Button */}
-        <div style={{ position: "relative" }}>
+        <div ref={settingsRef} style={{ position: "relative" }}>
           <button
             onClick={() => setShowSettings(!showSettings)}
             style={{
@@ -433,7 +455,10 @@ export default function MapView() {
                 </div>
                 <div style={{ display: "flex", background: "rgba(255,255,255,0.1)", borderRadius: "8px", padding: "4px" }}>
                   <button
-                    onClick={() => setShowDataViz(false)}
+                    onClick={() => {
+                      setShowDataViz(false);
+                      setShowSettings(false);
+                    }}
                     style={{
                       flex: 1,
                       padding: "8px",
@@ -449,7 +474,10 @@ export default function MapView() {
                     📍 Clusters
                   </button>
                   <button
-                    onClick={() => setShowDataViz(true)}
+                    onClick={() => {
+                      setShowDataViz(true);
+                      setShowSettings(false);
+                    }}
                     style={{
                       flex: 1,
                       padding: "8px",
@@ -547,8 +575,6 @@ export default function MapView() {
           )}
         </div>
       </div>
-
-      {/* Clean up old panels */}
     </>
   );
 }
