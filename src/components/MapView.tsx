@@ -1,6 +1,6 @@
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
-import { Map, Palette, LogOut, Settings, BarChart3 } from "lucide-react";
+import { Map, Palette, Settings, BarChart3 } from "lucide-react";
 import { ApiService } from "../services/api";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -25,11 +25,9 @@ interface ColorScheme {
   tertiary: string;
 }
 
-interface MapViewProps {
-  onLogout: () => void;
-}
 
-export default function MapView({ onLogout }: MapViewProps) {
+
+export default function MapView() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const [currentStyle, setCurrentStyle] = useState<MapStyle>("streets");
