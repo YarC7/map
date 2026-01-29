@@ -70,23 +70,37 @@ export default function MapView({ onLogout }: MapViewProps) {
         "source-layer": "devices",
         maxzoom: 15,
         paint: {
-          "heatmap-weight": 1,
-          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 9, 3],
+          "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["coalesce", ["get", "weight"], ["get", "point_count"], 1],
+            0,
+            0,
+            1,
+            0.5,
+            10,
+            1,
+            100,
+            2
+          ],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 2, 5, 3, 9, 4],
           "heatmap-color": [
             "interpolate",
             ["linear"],
             ["heatmap-density"],
             0,
             "rgba(0,0,0,0)",
-            0.2,
+            0.15,
             colors.tertiary,
-            0.4,
+            0.35,
             colors.secondary,
-            1,
+            0.6,
+            colors.primary,
+            1.0,
             colors.primary,
           ],
-          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20],
-          "heatmap-opacity": 0.85,
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 8, 5, 16, 9, 25, 15, 50],
+          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0.8, 15, 0],
         },
       });
 
@@ -99,10 +113,10 @@ export default function MapView({ onLogout }: MapViewProps) {
         minzoom: 8,
         paint: {
           "circle-color": colors.primary,
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1, 12, 4],
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#fff",
-          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 10, 1],
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1, 12, 3],
+          "circle-stroke-width": 0,
+          "circle-stroke-color": "transparent",
+          "circle-opacity": ["interpolate", ["linear"], ["zoom"], 8, 0, 11, 0.4, 14, 0.8],
         },
       });
     } else {
@@ -170,7 +184,34 @@ export default function MapView({ onLogout }: MapViewProps) {
     }
   };
 
+  const currentStyleRef = useRef<MapStyle>(currentStyle);
+
   useEffect(() => {
+    if (mapInstanceRef.current) {
+      const map = mapInstanceRef.current;
+
+      const updateLayers = () => {
+        if (!map.getSource("mvt-points")) {
+          map.addSource("mvt-points", {
+            type: "vector",
+            tiles: [MVT_TILES_URL],
+            minzoom: 0,
+            maxzoom: 14,
+          });
+        }
+        addMVTLayers(map, colorScheme, showDataViz);
+      };
+
+      if (currentStyleRef.current !== currentStyle) {
+        currentStyleRef.current = currentStyle;
+        map.setStyle(MAP_STYLES[currentStyle]);
+        map.once("style.load", updateLayers);
+      } else if (map.isStyleLoaded()) {
+        updateLayers();
+      }
+      return;
+    }
+
     const map = new mapboxgl.Map({
       container: mapRef.current!,
       style: MAP_STYLES[currentStyle],
@@ -193,14 +234,14 @@ export default function MapView({ onLogout }: MapViewProps) {
 
     map.on("load", () => {
       try {
-        // Add MVT source
-        map.addSource("mvt-points", {
-          type: "vector",
-          tiles: [MVT_TILES_URL],
-          minzoom: 0,
-          maxzoom: 14,
-        });
-
+        if (!map.getSource("mvt-points")) {
+          map.addSource("mvt-points", {
+            type: "vector",
+            tiles: [MVT_TILES_URL],
+            minzoom: 0,
+            maxzoom: 14,
+          });
+        }
         addMVTLayers(map, colorScheme, showDataViz);
 
         // Click handler for points
@@ -228,7 +269,7 @@ export default function MapView({ onLogout }: MapViewProps) {
           }
         });
 
-        // Cursor on hover
+        // Event for cursor on hover
         map.on("mouseenter", "mvt-points", () => {
           map.getCanvas().style.cursor = "pointer";
         });
@@ -243,7 +284,9 @@ export default function MapView({ onLogout }: MapViewProps) {
       }
     });
 
-    return () => map.remove();
+    return () => {
+      // Keep map instance alive
+    };
   }, [currentStyle, colorScheme, showDataViz]);
 
   const handleStyleChange = (style: MapStyle) => setCurrentStyle(style);
