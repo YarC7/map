@@ -20,9 +20,12 @@ const MAP_STYLES = {
 type MapStyle = keyof typeof MAP_STYLES;
 
 interface ColorScheme {
-  primary: string;
-  secondary: string;
-  tertiary: string;
+  dongle: string;
+  keyboard: string;
+  mouse: string;
+  clusterLight: string;
+  clusterMedium: string;
+  clusterDark: string;
 }
 
 
@@ -32,9 +35,12 @@ export default function MapView() {
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const [currentStyle, setCurrentStyle] = useState<MapStyle>("streets");
   const [colorScheme, setColorScheme] = useState<ColorScheme>({
-    primary: "#ff3b30",
-    secondary: "#ff9500",
-    tertiary: "#ffcc00",
+    dongle: "#FF0000",      // Red
+    keyboard: "#0000FF",    // Blue
+    mouse: "#00FF00",       // Green
+    clusterLight: "#FFB84D",   // Light orange
+    clusterMedium: "#FF9500",  // Medium orange
+    clusterDark: "#FF3300",    // Dark red-orange
   });
   const [showSettings, setShowSettings] = useState(false);
   const [showDataViz, setShowDataViz] = useState(false);
@@ -99,13 +105,13 @@ export default function MapView() {
             0,
             "rgba(0,0,0,0)",
             0.15,
-            colors.tertiary,
+            colors.clusterLight,
             0.35,
-            colors.secondary,
+            colors.clusterMedium,
             0.6,
-            colors.primary,
+            colors.clusterDark,
             1.0,
-            colors.primary,
+            colors.clusterDark,
           ],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 8, 5, 16, 9, 25, 15, 50],
           "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0.8, 15, 0],
@@ -120,7 +126,7 @@ export default function MapView() {
         "source-layer": "devices",
         minzoom: 8,
         paint: {
-          "circle-color": colors.primary,
+          "circle-color": colors.clusterDark,
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1, 12, 3],
           "circle-stroke-width": 0,
           "circle-stroke-color": "transparent",
@@ -139,15 +145,15 @@ export default function MapView() {
           "circle-color": [
             "step",
             ["get", "point_count"],
-            "#FFB84D",  // < 10: Light orange
+            colors.clusterLight,  // < 10: Light orange
             10,
-            "#FF9500",  // 10-49: Medium orange
+            colors.clusterLight,  // 10-49: Light orange
             50,
-            "#FF8800",  // 50-99: Darker orange
+            colors.clusterMedium,  // 50-99: Medium orange
             100,
-            "#FF6600",  // 100-499: Even darker
+            colors.clusterMedium,  // 100-499: Medium orange
             500,
-            "#FF3300"   // >= 500: Deep red-orange
+            colors.clusterDark   // >= 500: Dark red-orange
           ],
           "circle-radius": [
             "step",
@@ -198,11 +204,10 @@ export default function MapView() {
           "circle-color": [
             "match",
             ["get", "deviceType"],
-            "dongle", "#FF0000",    // 🔴 Red
-            "keyboard", "#0000FF",  // 🔵 Blue
-            "mouse", "#00FF00",     // 🟢 Green
-            // "headset", "#8B00FF",   // 🟣 Purple
-            "#FF8800"               // 🟠 Orange (fallback)
+            "dongle", colors.dongle,
+            "keyboard", colors.keyboard,
+            "mouse", colors.mouse,
+            "#FF8800"  // Orange (fallback for unknown types)
           ],
           "circle-radius": 6,
           "circle-stroke-width": 2,
@@ -399,7 +404,7 @@ export default function MapView() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <span style={{ color: "rgba(255,255,255,0.6)" }}>Total Devices:</span>
-            <span style={{ color: colorScheme.primary, fontSize: "12px" }}>
+            <span style={{ color: colorScheme.clusterDark, fontSize: "12px" }}>
               {deviceCount !== null ? deviceCount.toLocaleString() : "..."}
             </span>
           </div>
@@ -563,10 +568,18 @@ export default function MapView() {
                           width: "16px",
                           height: "16px",
                           cursor: "pointer",
-                          accentColor: device.color,
+                          accentColor: colorScheme[device.type as keyof ColorScheme],
                         }}
                       />
-                      <span style={{ fontSize: "14px" }}>{device.icon}</span>
+                      <div
+                        style={{
+                          width: "12px",
+                          height: "12px",
+                          borderRadius: "50%",
+                          backgroundColor: colorScheme[device.type as keyof ColorScheme],
+                          flexShrink: 0,
+                        }}
+                      />
                       <span style={{ color: "#fff", fontSize: "11px", flex: 1 }}>{device.label}</span>
                     </label>
                   ))}
@@ -609,9 +622,11 @@ export default function MapView() {
                   <Palette size={12} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {(["primary", "secondary", "tertiary"] as const).map((colorType) => (
+                  {(["dongle", "keyboard", "mouse", "clusterLight", "clusterMedium", "clusterDark"] as const).map((colorType) => (
                     <div key={colorType} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ color: "#fff", fontSize: "10px", textTransform: "capitalize" }}>{colorType}</span>
+                      <span style={{ color: "#fff", fontSize: "10px", textTransform: "capitalize" }}>
+                        {colorType.replace("cluster", "Cluster ")}
+                      </span>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span style={{ color: "#888", fontSize: "9px", fontFamily: "monospace" }}>{colorScheme[colorType]}</span>
                         <input
@@ -630,9 +645,9 @@ export default function MapView() {
                 {/* Presets */}
                 <div style={{ display: "flex", gap: "4px", marginTop: "12px", overflowX: "auto", paddingBottom: "4px" }}>
                   {[
-                    { name: "Hot", colors: { primary: "#ff3b30", secondary: "#ff9500", tertiary: "#ffcc00" } },
-                    { name: "Cool", colors: { primary: "#007aff", secondary: "#5ac8fa", tertiary: "#a0d9ff" } },
-                    { name: "Green", colors: { primary: "#34c759", secondary: "#30d158", tertiary: "#a8f5ba" } },
+                    { name: "Default", colors: { dongle: "#FF0000", keyboard: "#0000FF", mouse: "#00FF00", clusterLight: "#FFB84D", clusterMedium: "#FF9500", clusterDark: "#FF3300" } },
+                    { name: "Cool", colors: { dongle: "#007aff", keyboard: "#5ac8fa", mouse: "#a0d9ff", clusterLight: "#90CAF9", clusterMedium: "#42A5F5", clusterDark: "#1976D2" } },
+                    { name: "Nature", colors: { dongle: "#34c759", keyboard: "#30d158", mouse: "#a8f5ba", clusterLight: "#A5D6A7", clusterMedium: "#66BB6A", clusterDark: "#388E3C" } },
                   ].map((preset) => (
                     <button
                       key={preset.name}
