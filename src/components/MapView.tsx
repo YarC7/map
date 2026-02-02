@@ -43,11 +43,18 @@ export default function MapView() {
   const [isMenuHovered, setIsMenuHovered] = useState(false);
   const [deviceCount, setDeviceCount] = useState<number | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const [deviceTypeFilters, setDeviceTypeFilters] = useState<string[]>([
+    "dongle",
+    "keyboard",
+    "mouse",
+    // "headset",
+  ]);
 
   const addMVTLayers = (
     map: mapboxgl.Map,
     colors: ColorScheme,
-    showHeatmap: boolean
+    showHeatmap: boolean,
+    deviceTypes: string[]
   ) => {
     // Remove existing layers
     const layersToRemove = [
@@ -132,11 +139,15 @@ export default function MapView() {
           "circle-color": [
             "step",
             ["get", "point_count"],
-            colors.tertiary,
+            "#FFB84D",  // < 10: Light orange
             10,
-            colors.secondary,
+            "#FF9500",  // 10-49: Medium orange
             50,
-            colors.primary,
+            "#FF8800",  // 50-99: Darker orange
+            100,
+            "#FF6600",  // 100-499: Even darker
+            500,
+            "#FF3300"   // >= 500: Deep red-orange
           ],
           "circle-radius": [
             "step",
@@ -146,6 +157,10 @@ export default function MapView() {
             20,
             50,
             25,
+            100,
+            30,
+            500,
+            35,
           ],
           "circle-stroke-width": 2,
           "circle-stroke-color": "#fff",
@@ -174,9 +189,21 @@ export default function MapView() {
         type: "circle",
         source: "mvt-points",
         "source-layer": "devices",
-        filter: ["!", ["has", "point_count"]],
+        filter: [
+          "all",
+          ["!", ["has", "point_count"]],
+          ["in", ["get", "deviceType"], ["literal", deviceTypes]]
+        ],
         paint: {
-          "circle-color": colors.primary,
+          "circle-color": [
+            "match",
+            ["get", "deviceType"],
+            "dongle", "#FF0000",    // 🔴 Red
+            "keyboard", "#0000FF",  // 🔵 Blue
+            "mouse", "#00FF00",     // 🟢 Green
+            // "headset", "#8B00FF",   // 🟣 Purple
+            "#FF8800"               // 🟠 Orange (fallback)
+          ],
           "circle-radius": 6,
           "circle-stroke-width": 2,
           "circle-stroke-color": "#fff",
@@ -200,7 +227,7 @@ export default function MapView() {
             maxzoom: 14,
           });
         }
-        addMVTLayers(map, colorScheme, showDataViz);
+        addMVTLayers(map, colorScheme, showDataViz, deviceTypeFilters);
       };
 
       if (currentStyleRef.current !== currentStyle) {
@@ -243,7 +270,7 @@ export default function MapView() {
             maxzoom: 14,
           });
         }
-        addMVTLayers(map, colorScheme, showDataViz);
+        addMVTLayers(map, colorScheme, showDataViz, deviceTypeFilters);
 
         // Click handler for points
         map.on("click", "mvt-points", (e) => {
@@ -288,7 +315,7 @@ export default function MapView() {
     return () => {
       // Keep map instance alive
     };
-  }, [currentStyle, colorScheme, showDataViz]);
+  }, [currentStyle, colorScheme, showDataViz, deviceTypeFilters]);
 
   useEffect(() => {
     const fetchDeviceCount = async () => {
@@ -492,6 +519,57 @@ export default function MapView() {
                   >
                     🔥 Heatmap
                   </button>
+                </div>
+              </section>
+
+              {/* Device Type Filter Section */}
+              <section>
+                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
+                  Device Types
+                  <span title="Filter devices by type">🔍</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {[
+                    { type: "dongle", label: "Dongle", color: "#FF0000", icon: "🔴" },
+                    { type: "keyboard", label: "Keyboard", color: "#0000FF", icon: "🔵" },
+                    { type: "mouse", label: "Mouse", color: "#00FF00", icon: "🟢" },
+                    // { type: "headset", label: "Headset", color: "#8B00FF", icon: "🟣" },
+                  ].map((device) => (
+                    <label
+                      key={device.type}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        cursor: "pointer",
+                        padding: "6px 8px",
+                        background: deviceTypeFilters.includes(device.type) ? "rgba(255, 255, 255, 0.1)" : "transparent",
+                        borderRadius: "6px",
+                        transition: "background 0.2s",
+                      }}
+                      title={`${deviceTypeFilters.includes(device.type) ? "Hide" : "Show"} ${device.label} devices`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={deviceTypeFilters.includes(device.type)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setDeviceTypeFilters([...deviceTypeFilters, device.type]);
+                          } else {
+                            setDeviceTypeFilters(deviceTypeFilters.filter((t) => t !== device.type));
+                          }
+                        }}
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          cursor: "pointer",
+                          accentColor: device.color,
+                        }}
+                      />
+                      <span style={{ fontSize: "14px" }}>{device.icon}</span>
+                      <span style={{ color: "#fff", fontSize: "11px", flex: 1 }}>{device.label}</span>
+                    </label>
+                  ))}
                 </div>
               </section>
 
